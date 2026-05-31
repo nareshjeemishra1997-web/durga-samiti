@@ -25,6 +25,11 @@
   .stat-box{background:rgba(0,0,0,0.25);padding:10px 6px;text-align:center;backdrop-filter:blur(4px);}
   .stat-num{font-size:1.35rem;font-weight:700;color:var(--gold);font-family:'Cinzel Decorative',serif;}
   .stat-lbl{font-size:0.62rem;color:rgba(255,240,160,0.8);text-transform:uppercase;letter-spacing:0.8px;margin-top:2px;}
+  .sync-bar{font-size:0.68rem;text-align:center;padding:5px;font-weight:700;letter-spacing:0.3px;}
+  .sync-ok{background:#1B5E20;color:#A5D6A7;}
+  .sync-ing{background:#0D47A1;color:#90CAF9;animation:pulse 1s infinite;}
+  .sync-err{background:#B71C1C;color:#FFCDD2;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
   .nav-tabs{display:flex;overflow-x:auto;gap:0;background:var(--maroon);padding:0 8px;scrollbar-width:none;border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:100;}
   .nav-tabs::-webkit-scrollbar{display:none;}
   .tab-btn{flex-shrink:0;background:none;border:none;cursor:pointer;padding:12px 14px;font-size:0.72rem;font-weight:700;color:rgba(255,240,160,0.65);letter-spacing:0.5px;text-transform:uppercase;transition:all .25s;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;font-family:'Lato',sans-serif;}
@@ -107,10 +112,6 @@
   .act-amt{font-weight:700;font-size:0.88rem;color:var(--deep-red);white-space:nowrap;}
   .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--maroon);color:var(--gold);padding:10px 22px;border-radius:20px;font-size:0.82rem;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:500;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .sync-bar{background:rgba(0,0,0,0.3);color:var(--gold-light);font-size:0.65rem;text-align:center;padding:4px;letter-spacing:0.5px;}
-  .sync-bar.syncing{background:#1565C0;animation:pulse 1s infinite;}
-  .sync-bar.error{background:#8B0000;}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
   .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--maroon);display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--gold);z-index:200;padding-bottom:env(safe-area-inset-bottom,0);}
   .bnav-btn{background:none;border:none;cursor:pointer;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;color:rgba(255,240,160,0.55);transition:color .2s;font-family:'Lato',sans-serif;}
   .bnav-btn.active{color:var(--gold);}
@@ -135,7 +136,6 @@
 </style>
 </head>
 <body>
-
 <header>
   <div class="header-top">
     <span class="diya-icon">🪔</span>
@@ -153,7 +153,7 @@
     <div class="stat-box"><div class="stat-num" id="h-loans">₹0</div><div class="stat-lbl">Loans</div></div>
   </div>
 </header>
-<div class="sync-bar" id="syncBar">🔄 Connecting to server...</div>
+<div id="syncBar" class="sync-bar sync-ing">🔄 Data load ho raha hai...</div>
 
 <nav class="nav-tabs">
   <button class="tab-btn active" onclick="switchTab('home',this)"><span class="tab-icon">🏠</span>Home</button>
@@ -166,7 +166,6 @@
 </nav>
 
 <main>
-
 <!-- HOME -->
 <div id="tab-home" class="tab-panel active">
   <div class="durga-photo-wrap">
@@ -356,13 +355,11 @@
   <div class="about-card" style="text-align:center;">
     <div style="font-size:2rem;margin-bottom:8px;">🪔</div>
     <h3 style="text-align:center;">जय माँ दुर्गा</h3>
-    <p style="margin-top:6px;font-size:0.75rem;color:#aaa;">v3.0 — Cloud Sync Enabled</p>
+    <p style="margin-top:6px;font-size:0.75rem;color:#aaa;">v4.0 — JSONBin Cloud Sync</p>
   </div>
 </div>
-
 </main>
 
-<!-- QR MODAL -->
 <div class="qr-modal" id="qrModal" onclick="closeQR(event)">
   <div class="qr-box">
     <div class="qr-title">🪔 Scan to Donate</div>
@@ -372,9 +369,7 @@
     <button class="btn-close-qr" onclick="document.getElementById('qrModal').classList.remove('open')">Close</button>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
-
 <nav class="bottom-nav">
   <button class="bnav-btn active" onclick="switchTab('home',null,this)"><span class="bicon">🏠</span><span class="blbl">Home</span></button>
   <button class="bnav-btn" onclick="switchTab('donation',null,this)"><span class="bicon">🤲</span><span class="blbl">Donate</span></button>
@@ -390,63 +385,83 @@ const DURGA_IMG='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/7QBEUGhvdG9z
 document.getElementById('qr-code-img').src=QR_IMG;
 document.getElementById('durga-main-img').src=DURGA_IMG;
 
-// ── CLOUD SYNC via JSONBin.io (free, no signup needed for reading) ──
-// We use Claude artifact persistent storage as shared DB
-const STORAGE_KEY='durga_samiti_v3_shared';
+// ── JSONBIN CONFIG ──
+const MASTER_KEY='$2a$10$.1r9Lx1CMj41y1FMF42EjOt7QG1sec1VXuhVDak22JwBbtg.dbwLC';
+const ACCESS_KEY='$2a$10$GuE6OFjksmX.C5HFuZY/e.Eya38UXt/ebuzMqy1PJbRqi1YTfpqEjK';
+const BIN_NAME='durga-samiti-data';
+let BIN_ID=localStorage.getItem('jb_bin_id')||'';
 
-// Shared cloud DB using window.storage (artifact persistent storage - shared=true)
 let DB={donations:[],members:[],loans:[],advances:[]};
-let syncTimer=null;
+const filters={donation:'all',member:'all',loan:'all',advance:'all'};
 
 function setSyncBar(msg,cls){
   const b=document.getElementById('syncBar');
-  b.textContent=msg; b.className='sync-bar'+(cls?' '+cls:'');
+  b.textContent=msg; b.className='sync-bar '+cls;
+}
+
+async function initBin(){
+  // Try to find existing bin or create new
+  if(!BIN_ID){
+    setSyncBar('🔄 Pehli baar setup ho raha hai...','sync-ing');
+    try{
+      const res=await fetch('https://api.jsonbin.io/v3/b',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Master-Key':MASTER_KEY,'X-Bin-Name':BIN_NAME,'X-Bin-Private':'false'},
+        body:JSON.stringify({donations:[],members:[],loans:[],advances:[]})
+      });
+      const data=await res.json();
+      BIN_ID=data.metadata.id;
+      localStorage.setItem('jb_bin_id',BIN_ID);
+    }catch(e){ setSyncBar('⚠️ Internet nahi hai — offline mode','sync-err'); loadLocal(); return; }
+  }
+  await loadFromCloud();
 }
 
 async function loadFromCloud(){
-  setSyncBar('🔄 Loading data...','syncing');
+  setSyncBar('🔄 Data load ho raha hai...','sync-ing');
   try{
-    const res=await window.storage.get(STORAGE_KEY,true);
-    if(res && res.value){
-      const parsed=JSON.parse(res.value);
-      DB=parsed;
-    }
-    setSyncBar('✅ Sabka data sync ho gaya — Sab dekh sakte hain!');
+    const res=await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,{
+      headers:{'X-Master-Key':MASTER_KEY,'X-Access-Key':ACCESS_KEY}
+    });
+    const data=await res.json();
+    DB=data.record;
+    saveLocal();
+    setSyncBar('✅ Sab sync hai — Sabke phone par same data dikh raha hai 🙏','sync-ok');
     renderAll();
   }catch(e){
-    setSyncBar('📴 Offline mode — Sirf aapke phone par save ho raha hai','error');
-    // fallback to localStorage
-    DB={
-      donations:JSON.parse(localStorage.getItem('dp_don')||'[]'),
-      members:JSON.parse(localStorage.getItem('dp_mem')||'[]'),
-      loans:JSON.parse(localStorage.getItem('dp_loan')||'[]'),
-      advances:JSON.parse(localStorage.getItem('dp_adv')||'[]'),
-    };
-    renderAll();
+    setSyncBar('⚠️ Offline — Local data dikh raha hai','sync-err');
+    loadLocal(); renderAll();
   }
 }
 
 async function saveToCloud(){
-  setSyncBar('🔄 Saving...','syncing');
-  // Also save locally as backup
-  localStorage.setItem('dp_don',JSON.stringify(DB.donations));
-  localStorage.setItem('dp_mem',JSON.stringify(DB.members));
-  localStorage.setItem('dp_loan',JSON.stringify(DB.loans));
-  localStorage.setItem('dp_adv',JSON.stringify(DB.advances));
+  saveLocal();
+  if(!BIN_ID){await initBin();return;}
+  setSyncBar('🔄 Save ho raha hai...','sync-ing');
   try{
-    await window.storage.set(STORAGE_KEY,JSON.stringify(DB),true);
-    setSyncBar('✅ Saved! Sabke phone par update ho gaya 🙏');
+    await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':MASTER_KEY,'X-Access-Key':ACCESS_KEY},
+      body:JSON.stringify(DB)
+    });
+    setSyncBar('✅ Saved! Sabke phone par update ho gaya 🎉','sync-ok');
   }catch(e){
-    setSyncBar('⚠️ Cloud save failed — locally saved only','error');
+    setSyncBar('⚠️ Cloud save failed — locally saved','sync-err');
   }
 }
 
+function saveLocal(){
+  localStorage.setItem('dp_db',JSON.stringify(DB));
+}
+function loadLocal(){
+  const d=localStorage.getItem('dp_db');
+  if(d) DB=JSON.parse(d);
+}
+
 // Auto-refresh every 30 seconds
-setInterval(loadFromCloud, 30000);
+setInterval(loadFromCloud,30000);
 
-// ── UI ──
-const filters={donation:'all',member:'all',loan:'all',advance:'all'};
-
+// ── UI FUNCTIONS ──
 function switchTab(id,topBtn,botBtn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
@@ -467,7 +482,7 @@ async function saveDonation(){
   DB.donations.push({id:Date.now(),name,amount:amt,date:document.getElementById('don-date').value||today(),phone:document.getElementById('don-phone').value,mode:document.getElementById('don-mode').value,note:document.getElementById('don-note').value,status:'Paid'});
   ['don-name','don-amt','don-phone','don-note'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('don-form').classList.remove('open');
-  renderAll(); toast('✅ Donation saved!'); await saveToCloud();
+  renderAll();toast('✅ Donation saved!');await saveToCloud();
 }
 async function saveMember(){
   const name=document.getElementById('mem-name').value.trim();
@@ -475,7 +490,7 @@ async function saveMember(){
   DB.members.push({id:Date.now(),name,phone:document.getElementById('mem-phone').value,role:document.getElementById('mem-role').value,fee:parseFloat(document.getElementById('mem-fee').value)||0,date:document.getElementById('mem-date').value||today(),status:document.getElementById('mem-status').value,address:document.getElementById('mem-addr').value});
   ['mem-name','mem-phone','mem-fee','mem-addr'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('mem-form').classList.remove('open');
-  renderAll(); toast('✅ Member added!'); await saveToCloud();
+  renderAll();toast('✅ Member added!');await saveToCloud();
 }
 async function saveLoan(){
   const name=document.getElementById('loan-name').value.trim();
@@ -484,7 +499,7 @@ async function saveLoan(){
   DB.loans.push({id:Date.now(),name,amount:amt,phone:document.getElementById('loan-phone').value,interest:parseFloat(document.getElementById('loan-int').value)||0,date:document.getElementById('loan-date').value||today(),due:document.getElementById('loan-due').value,purpose:document.getElementById('loan-purpose').value,status:'Active'});
   ['loan-name','loan-phone','loan-amt','loan-int','loan-due','loan-purpose'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('loan-form').classList.remove('open');
-  renderAll(); toast('✅ Loan recorded!'); await saveToCloud();
+  renderAll();toast('✅ Loan recorded!');await saveToCloud();
 }
 async function saveAdvance(){
   const name=document.getElementById('adv-name').value.trim();
@@ -493,18 +508,18 @@ async function saveAdvance(){
   DB.advances.push({id:Date.now(),name,amount:amt,phone:document.getElementById('adv-phone').value,type:document.getElementById('adv-type').value,date:document.getElementById('adv-date').value||today(),settle:document.getElementById('adv-settle').value,remarks:document.getElementById('adv-remarks').value,status:'Active'});
   ['adv-name','adv-phone','adv-amt','adv-remarks'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('adv-form').classList.remove('open');
-  renderAll(); toast('✅ Advance saved!'); await saveToCloud();
+  renderAll();toast('✅ Advance saved!');await saveToCloud();
 }
 async function deleteRecord(type,id){
-  if(!confirm('Delete this record?')) return;
+  if(!confirm('Delete this record?'))return;
   DB[type]=DB[type].filter(r=>r.id!==id);
-  renderAll(); toast('🗑 Deleted'); await saveToCloud();
+  renderAll();toast('🗑 Deleted');await saveToCloud();
 }
 async function toggleStatus(type,id){
-  const r=DB[type].find(x=>x.id===id); if(!r) return;
-  if(type==='donations'||type==='members') r.status=r.status==='Paid'?'Pending':'Paid';
+  const r=DB[type].find(x=>x.id===id);if(!r)return;
+  if(type==='donations'||type==='members')r.status=r.status==='Paid'?'Pending':'Paid';
   else r.status=r.status==='Active'?'Closed':'Active';
-  renderAll(); toast('✅ Status updated'); await saveToCloud();
+  renderAll();toast('✅ Updated');await saveToCloud();
 }
 
 function filterList(type,val){filters[type+'-search']=val.toLowerCase();render(type);}
@@ -567,7 +582,7 @@ function closeQR(e){if(e.target===document.getElementById('qrModal'))document.ge
 function quickDonate(amt){window.open(`upi://pay?pa=bablumishra542-1@okhdfcbank&pn=Durga+Pooja+Sahayak+Samiti&am=${amt}&cu=INR`,'_blank');toast(`📱 Opening UPI for ₹${amt}…`);}
 
 document.querySelectorAll('.form-card input[type=date]').forEach(el=>el.value=today());
-loadFromCloud();
+initBin();
 </script>
 </body>
 </html>
