@@ -1,1 +1,1 @@
-# durga-samit.iindex.html
+index.html
